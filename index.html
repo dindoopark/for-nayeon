@@ -424,6 +424,26 @@
       }
       .mobile-nav .next-btn:active { transform: translateY(1px); }
     }
+    @keyframes np-slide-out-left {
+      to { transform: translateX(-35%); opacity: 0; }
+    }
+    @keyframes np-slide-out-right {
+      to { transform: translateX(35%); opacity: 0; }
+    }
+    @keyframes np-slide-in-right {
+      from { transform: translateX(35%); opacity: 0; }
+    }
+    @keyframes np-slide-in-left {
+      from { transform: translateX(-35%); opacity: 0; }
+    }
+    .page.anim-out-left  { animation: np-slide-out-left .18s ease forwards; }
+    .page.anim-out-right { animation: np-slide-out-right .18s ease forwards; }
+    .page.anim-in-right  { animation: np-slide-in-right .22s ease; }
+    .page.anim-in-left   { animation: np-slide-in-left .22s ease; }
+    @media (prefers-reduced-motion: reduce) {
+      .page.anim-out-left, .page.anim-out-right,
+      .page.anim-in-right, .page.anim-in-left { animation: none; }
+    }
   </style>
 </head>
 <body>
@@ -612,11 +632,29 @@
       })[char]);
     }
 
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
     function move(delta) {
       const list = questionList();
       if (!list.length) return;
-      state.index = (state.index + delta + list.length) % list.length;
-      renderAll();
+      const oldPage = stage.querySelector(".page");
+      const finish = () => {
+        state.index = (state.index + delta + list.length) % list.length;
+        renderAll();
+        if (reducedMotion) return;
+        const newPage = stage.querySelector(".page");
+        if (!newPage) return;
+        const inClass = delta > 0 ? "anim-in-right" : "anim-in-left";
+        newPage.classList.add(inClass);
+        newPage.addEventListener("animationend", () => newPage.classList.remove(inClass), { once: true });
+      };
+      if (oldPage && !reducedMotion) {
+        oldPage.classList.remove("swiping-left", "swiping-right");
+        oldPage.classList.add(delta > 0 ? "anim-out-left" : "anim-out-right");
+        setTimeout(finish, 180);
+      } else {
+        finish();
+      }
     }
 
     function renderAll() {
