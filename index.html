@@ -367,6 +367,63 @@
       .page-no { margin-top: 10px; text-align: left; }
       .option { grid-template-columns: 28px minmax(0, 1fr); }
     }
+    .mobile-nav { display: none; }
+    @media (max-width: 900px) {
+      .page { position: relative; }
+      .page::before, .page::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 18px;
+        pointer-events: none;
+        z-index: 1;
+      }
+      .page::before {
+        left: 0;
+        background: linear-gradient(to right, rgba(78,31,24,.14) 0%, rgba(78,31,24,.05) 60%, transparent 100%);
+        border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+      }
+      .page::after {
+        right: 0;
+        background: linear-gradient(to left, rgba(78,31,24,.14) 0%, rgba(78,31,24,.05) 60%, transparent 100%);
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+      }
+      .page.swiping-left  { transition: transform .12s ease; transform: translateX(-10px); }
+      .page.swiping-right { transition: transform .12s ease; transform: translateX(10px); }
+      .stage { padding-bottom: 96px; }
+      .mobile-nav {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        gap: 8px;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 50;
+        padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+        background: linear-gradient(to bottom, rgba(250,247,239,0), rgba(250,247,239,.96) 35%);
+        backdrop-filter: blur(10px);
+      }
+      .mobile-nav button {
+        height: 56px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--paper);
+        color: var(--ink);
+        font-size: 17px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .mobile-nav .next-btn {
+        background: var(--accent);
+        color: #fffaf0;
+        border-color: var(--accent);
+      }
+      .mobile-nav .next-btn:active { transform: translateY(1px); }
+    }
   </style>
 </head>
 <body>
@@ -403,6 +460,10 @@
         </div>
       </div>
       <section class="stage" id="stage"></section>
+      <nav class="mobile-nav" aria-label="문제 이동">
+        <button id="prevMobile" type="button">‹ 이전</button>
+        <button class="next-btn" id="nextMobile" type="button">다음 문제 ›</button>
+      </nav>
     </main>
   </div>
   <script>
@@ -576,6 +637,37 @@
     });
     $("#prev").addEventListener("click", () => move(-1));
     $("#next").addEventListener("click", () => move(1));
+    $("#prevMobile").addEventListener("click", () => move(-1));
+    $("#nextMobile").addEventListener("click", () => move(1));
+
+    let touchStartX = 0, touchStartY = 0, touchActive = false;
+    stage.addEventListener("touchstart", (event) => {
+      if (event.touches.length !== 1) return;
+      touchStartX = event.touches[0].clientX;
+      touchStartY = event.touches[0].clientY;
+      touchActive = true;
+    }, { passive: true });
+    stage.addEventListener("touchmove", (event) => {
+      if (!touchActive || event.touches.length !== 1) return;
+      const dx = event.touches[0].clientX - touchStartX;
+      const dy = event.touches[0].clientY - touchStartY;
+      if (Math.abs(dy) > Math.abs(dx)) return;
+      const page = stage.querySelector(".page");
+      if (!page) return;
+      page.classList.toggle("swiping-left", dx < -20);
+      page.classList.toggle("swiping-right", dx > 20);
+    }, { passive: true });
+    stage.addEventListener("touchend", (event) => {
+      if (!touchActive) return;
+      touchActive = false;
+      const page = stage.querySelector(".page");
+      if (page) page.classList.remove("swiping-left", "swiping-right");
+      const dx = event.changedTouches[0].clientX - touchStartX;
+      const dy = event.changedTouches[0].clientY - touchStartY;
+      if (Math.abs(dx) < 50) return;
+      if (Math.abs(dy) > Math.abs(dx)) return;
+      move(dx < 0 ? 1 : -1);
+    }, { passive: true });
     $("#shuffle").addEventListener("click", () => {
       const list = questionList();
       if (!list.length) return;
